@@ -5,7 +5,7 @@ sock = socket.socket()
 sock.setblocking(1)
 sock.connect(('localhost', 9090))
 
-msg = input("Input string: ")
+msg = input("Input_string: ")
 #msg = "Hi!"
 sock.send(msg.encode())
 

@@ -1,77 +1,59 @@
-import socket
+import socket  # Модуль для работы с сокетами
 
+def main():
+    sock = socket.socket()
+    # Создаем TCP-сокет
+    server_address = ('localhost', 9090)
+    # Задаем адрес и порт сервера
 
-def get_host():
-    host_input = input("Введите адрес хоста [по умолчанию 'localhost']: ")
-    if not host_input.strip():
-        return 'localhost'
-    else:
-        return host_input
-
-
-def get_port():
-    while True:
-        try:
-            port_input = input("Введите номер порта [по умолчанию 12345]: ")
-            if not port_input.strip():
-                port = 12345
-            else:
-                port = int(port_input)
-            if 1 <= port <= 65535:
-                return port
-            else:
-                print("Пожалуйста, введите номер порта от 1 до 65535.")
-        except ValueError:
-            print("Некорректный ввод. Пожалуйста, введите числовое значение номера порта.")
-
-
-host = get_host()
-port = get_port()
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-try:
-    sock.connect((host, port))
-    print("Connected to server")
-except ConnectionRefusedError:
-    print(f"Не удалось подключиться к серверу {host}:{port}. Проверьте адрес и порт.")
-    sock.close()
-    exit()
-
-received_data = ''
-
-while True:
-    msg = input("Your string (type 'exit' to quit):")
     try:
-        sock.send((msg + '\n').encode('utf-8'))
-        print("Message sent to server")
-    except BrokenPipeError:
-        print("Соединение с сервером было потеряно.")
-        break
+        sock.connect(server_address)
+        # Пытаемся подключиться к серверу
+    except ConnectionRefusedError:
+        # Если сервер недоступен, выводим сообщение и завершаем работу
+        print("Не удалось подключиться к серверу. Пожалуйста, убедитесь, что сервер работает и доступен.")
+        return
+    except socket.error as e:
+        # Обработка других ошибок подключения
+        print(f"Ошибка подключения к серверу: {e}")
+        return
 
-    full_response = ''
-    while True:
-        try:
-            data = sock.recv(1024)
-            if not data:
-                print("Сервер закрыл соединение.")
-                sock.close()
-                exit()
-            received_data += data.decode('utf-8')
-            if '\n' in received_data:
-                line, received_data = received_data.split('\n', 1)
-                full_response = line
+    try:
+        while True:
+            # Бесконечный цикл для отправки сообщений на сервер
+            msg = input("Введите сообщение для отправки (для выхода введите 'exit'): ")
+            # Запрашиваем у пользователя сообщение для отправки
+            if msg.lower() == 'exit':
+                # Если пользователь ввел 'exit', выходим из цикла и завершаем работу
                 break
-        except ConnectionResetError:
-            print("Соединение было разорвано сервером.")
-            sock.close()
-            exit()
+            try:
+                sock.send(msg.encode())
+                # Отправляем сообщение на сервер, преобразовав его в байты
+            except BrokenPipeError:
+                # Если соединение с сервером было разорвано
+                print("Соединение с сервером было потеряно.")
+                break
+            except socket.error as e:
+                # Обработка других ошибок отправки данных
+                print(f"Ошибка отправки данных серверу: {e}")
+                break
 
-    print("Message received from server")
-    print(full_response)
+            try:
+                data = sock.recv(1024)
+                # Получаем данные от сервера (ожидаем эхо нашего сообщения)
+                if not data:
+                    # Если данных нет, сервер закрыл соединение
+                    print("Соединение с сервером было закрыто.")
+                    break
+                print("Получено от сервера:", data.decode())
+                # Выводим полученное сообщение, декодируя его из байтов в строку
+            except socket.error as e:
+                # Обработка ошибок получения данных
+                print(f"Ошибка получения данных от сервера: {e}")
+                break
+    finally:
+        sock.close()
+        # Закрываем соединение с сервером
 
-    if msg.lower() == 'exit':
-        break
-
-sock.close()
-print("Connection closed to server")
+if __name__ == "__main__":
+    main()
